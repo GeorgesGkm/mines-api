@@ -12,6 +12,10 @@ from src.users.user_router import router as user_router
 from fastapi.middleware.cors import CORSMiddleware
 from src.mission import router_agent
 from src.mission import router_mission
+from src.mission import router_entrep
+from src.mission import router_proces_verbal
+from src.mission import router_production
+
 from fastapi.staticfiles import StaticFiles
 
 
@@ -45,15 +49,21 @@ app.add_middleware(
 UPLOAD_DIR = "static/notes_explicatives"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+UPLOAD_TITRES_DIR = "static/documents_titres"
+os.makedirs(UPLOAD_TITRES_DIR, exist_ok=True)
+
 @app.get("/")
 def root():
     return {"message": "Backend OK"}
 
-app.mount("/static", StaticFiles(directory=UPLOAD_DIR), name="fichiers_agents")
+app.mount("/static", StaticFiles(directory=UPLOAD_DIR), name="notes_explicatives")
+app.mount("/static", StaticFiles(directory=UPLOAD_TITRES_DIR), name="documents_titres")
 
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(user_router, prefix="/auth", tags=["Gestion des users"])
 app.include_router(router_agent.router)
 app.include_router(router_mission.router)
-
+app.include_router(router_entrep.router)
+app.include_router(router_proces_verbal.router)
+app.include_router(router_production.router)
 

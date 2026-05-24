@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from src.core.database import get_db
 from src.core.config import settings
 from src.users import models
+from src.mission import models as model_agent
 from src.auth.tokenBlackList_models import TokenBlacklist
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -57,7 +58,9 @@ class RoleChecker:
         )
 
 
+
 allow_admin = RoleChecker(["admin"])
-allow_user = RoleChecker(["user"])
-allow_all = RoleChecker(["admin", "user", "chef_service"])
-allow_all_courrier = RoleChecker(["admin", "chef_service", "secretaire", "agent_courrier"])
+allow_agent = RoleChecker(["agent"])
+allow_directeur = RoleChecker(["directeur"])
+allow_all = RoleChecker(["admin", "directeur", "agent"])
+allow_dir_agent = RoleChecker(["directeur", "agent"])

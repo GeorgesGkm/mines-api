@@ -8,7 +8,7 @@ def init_db():
     db: Session = SessionLocal()
     try:
         # 1. Création des rôles
-        roles_to_create = ["admin", "user"]
+        roles_to_create = ["admin", "agent", "directeur"]
         role_objects = {}
         
         for role_name in roles_to_create:
@@ -28,10 +28,10 @@ def init_db():
             new_admin = User(
                 email=admin_email,
                 hashed_password=get_password_hash("123"),
-                full_name = "Admin Syst",
-                first_name = "Admin Syst",
+                full_name = "Admin",
+                first_name = "Système",
                 # On lui assigne les deux rôles via la table de liaison
-                roles=[role_objects["admin"], role_objects["user"]]
+                roles=[role_objects["admin"], role_objects["directeur"], role_objects["agent"]]
             )
             db.add(new_admin)
             db.commit()

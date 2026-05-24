@@ -28,6 +28,10 @@ class Agent(Base):
     # Relations
     missions = relationship("Mission", secondary=mission_agent, back_populates="agents")
 
+    #User compte
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True) 
+    user_rattache = relationship("User", back_populates="agent")
+
 
 class Mission(Base):
     __tablename__ = "mission"
@@ -37,8 +41,9 @@ class Mission(Base):
     province = Column(String(100), nullable=False)
     date_debut = Column(Date)
     date_fin = Column(Date)
-    statut = Column(String(50), default="PROPOSE") # PROPOSE, VALIDE_DIR, APPROUVE_SG, SIGNE_MINISTRE, RETIRE, EN_COURS, CLOTURE    mode_transport = Column(String(100))
-    date_signature = Column(Date, nullable=True)
+    statut = Column(String(50), default="PROPOSE") # PROPOSE, VALIDE_DIR, APPROUVE_SG, SIGNE_MINISTRE, RETIRE, EN_COURS, CLOTURE 
+    commentaire = Column(String(255), nullable=True)
+    date_cloture = Column(Date, nullable=True)
     mode_transport = Column(String(100), nullable=False)
     note_explicative = Column(String, nullable=True) # Texte ou lien vers le document de l'agent
 
@@ -54,7 +59,7 @@ class Mission(Base):
 class TypePV(Base):
     __tablename__ = "type_pv"
 
-    code_type = Column(String(50), primary_key=True, index=True)
+    code_type = Column(Integer, primary_key=True, index=True, autoincrement=True)
     type_nom = Column(String(100), nullable=False)
 
     # Relations
@@ -71,7 +76,7 @@ class ProcesVerbal(Base):
     
     # Clés étrangères (One-to-One avec Mission, Many-to-One avec Type)
     mission_id = Column(Integer, ForeignKey('mission.n_ordre'), unique=True)
-    type_code = Column(String(50), ForeignKey('type_pv.code_type'))
+    type_code = Column(Integer, ForeignKey('type_pv.code_type'))
 
     # Relations
     mission = relationship("Mission", back_populates="proces_verbal")
@@ -118,14 +123,13 @@ class ProductionSubstance(Base):
     __tablename__ = "production_substance"
 
     production_code = Column(String(50), ForeignKey('production.code_prod'), primary_key=True)
-    substance_contrat = Column(String(50), ForeignKey('substance.num_contrat'), primary_key=True)
+    substance_code = Column(Integer, ForeignKey('substance.code_sub'), primary_key=True)
     
     centre_ach = Column(String(100))
-    nb_achet = Column(Integer)
-    nb_exploit = Column(Integer)
+    nb_exp = Column(Integer)
     valbon = Column(Float)
     val_decl = Column(Float)
-    mpc_decl = Column(String(100))
+    mpc_decl = Column(Integer)
 
     # Relations vers les entités physiques
     production = relationship("Production", back_populates="substances")
@@ -142,17 +146,24 @@ class Production(Base):
     # Clé étrangère vers Entreprise
     entreprise_code = Column(String(50), ForeignKey('entreprise.code'))
 
+    # Clé étrangère vers la Mission
+    mission_id = Column(Integer, ForeignKey('mission.n_ordre'), nullable=False)
+
     # Relations
     entreprise = relationship("Entreprise", back_populates="productions")
     substances = relationship("ProductionSubstance", back_populates="production")
+    # Optionnel 
+    mission = relationship("Mission")
 
 
 class Substance(Base):
     __tablename__ = "substance"
 
-    num_contrat = Column(String(50), primary_key=True, index=True)
+    code_sub = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    libSub = Column(String(50))
+    mont = Column(Float)
+    carat = Column(Float)
     date_cont = Column(Date)
-    annee_cont = Column(Integer)
 
     # Relations
     productions = relationship("ProductionSubstance", back_populates="substance")

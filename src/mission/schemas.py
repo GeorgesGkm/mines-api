@@ -72,23 +72,72 @@ class ProcesVerbalBase(BaseSchema):
     date_pv: date
     infraction: Optional[str] = None
     montant_amande: Optional[float] = None
-    type_code: Optional[str] = None
+    type_code: Optional[int] = None
     mission_id: int
 
-class ProcesVerbalCreate(ProcesVerbalBase):
-    pass
+# Schéma pour la mise à jour partielle du PV
+class ProcesVerbalUpdate(BaseModel):
+    date_pv: Optional[date] = None
+    infraction: Optional[str] = None
+    montant_amande: Optional[float] = None
+    type_code: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 class ProcesVerbalResponse(ProcesVerbalBase):
     questions_reponses: List[QuestionReponseResponse] = []
 
+# Schéma pour la réponse paginée
+class PVPaginationResponse(BaseModel):
+    total_items: int
+    total_pages: int
+    current_page: int
+    page_size: int
+    items: List[ProcesVerbalResponse]
+
+    model_config = ConfigDict(from_attributes=True)
+
+class QuestionReponseBase(BaseModel):
+    num_ordre: int
+    question: str
+    response: str
+
+class QuestionReponseUpdate(BaseModel):
+    num_ordre: Optional[int] = None
+    question: Optional[str] = None
+    response: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ProcesVerbalCreate(BaseModel):
+    num_pv: str
+    date_pv: date
+    infraction: str
+    montant_amande: Optional[float] = 0.0
+    mission_id: int
+    type_code: int
+    
+    questions: Optional[List[QuestionReponseBase]] = []
+
+    model_config = ConfigDict(from_attributes=True)
 
 # --- TYPE PV ---
 class TypePVBase(BaseSchema):
-    code_type: str
     type_nom: str
 
 class TypePVResponse(TypePVBase):
+    code_type: int
+
+    model_config = ConfigDict(from_attributes=True)    
+
+class TypePVCreate(TypePVBase):
     pass
+
+class TypePVUpdate(BaseModel):
+   type_nom: Optional[str] = None
+
+   model_config = ConfigDict(from_attributes=True)
 
 
 # --- MISSION ---
@@ -106,6 +155,7 @@ class MissionCreate(MissionBase):
 
 class MissionResponse(MissionBase):
     n_ordre: int
+    note_explicative: str
     agents: List[AgentResponse] = []
     proces_verbal: Optional[ProcesVerbalBase] = None
 
@@ -129,8 +179,12 @@ class MissionPaginationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class MissionStatutUpdate(BaseModel):
-    statut: str # 'VALIDE_DIR', 'APPROUVE_SG', 'SIGNE_MINISTRE', 'RETIRE'
-    #commentaire: Optional[str] = None
+    statut: str # 'VALIDE_DIR', 'APPROUVE_SG', 'SIGNE_MINISTRE', 'RETIRE', 'EN_COURS','CLOTURE', 'ANNULE'
+
+    model_config = ConfigDict(from_attributes=True)
+
+class MissionClotureRequest(BaseModel):
+    commentaire: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -155,38 +209,119 @@ class EntrepriseBase(BaseSchema):
     phone: Optional[str] = None
     n_comptebancaire: Optional[str] = None
 
+class EntreprisePaginationResponse(BaseModel):
+    total_items: int
+    total_pages: int
+    current_page: int
+    page_size: int
+    items: List[EntrepriseResponse]
+
+    model_config = ConfigDict(from_attributes=True)
+
+class EntrepriseUpdate(BaseModel):
+    nomenclature: Optional[str] = None
+    rccm: Optional[str] = None
+    idnat: Optional[str] = None
+    adresse: Optional[str] = None
+    n_impot: Optional[str] = None
+    province: Optional[str] = None
+    phone: Optional[str] = None
+    n_comptebancaire: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 class EntrepriseCreate(EntrepriseBase):
     pass
+
 
 class EntrepriseResponse(EntrepriseBase):
     pass
 
 
-# --- PRODUCTION ---
-class ProductionBase(BaseSchema):
+# --- DÉTAILS DE LA SUBSTANCE DANS LE PAYLOAD ---
+class SubstanceProductionCreate(BaseModel):
+    libSub: str
+    mont: Optional[float] = 0.0
+    carat: Optional[float] = 0.0
+    date_cont: Optional[date] = None
+    
+    centre_ach: Optional[str] = None
+    nb_exp: Optional[int] = 0
+    valbon: Optional[float] = 0.0
+    val_decl: Optional[float] = 0.0
+    mpc_decl: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ProductionCreate(BaseModel):
+    code_prod: str        
+    datprod: date
+    nbCarat: Optional[float] = 0.0
+    entreprise_code: str  
+    mission_id: int       
+    
+    substances_declarees: List[SubstanceProductionCreate]
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ProductionSubstanceResponse(BaseModel):
+    substance_code: int
+    centre_ach: Optional[str]
+    nb_exp: Optional[int]
+    valbon: Optional[float]
+    val_decl: Optional[float]
+    mpc_decl: Optional[int]
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ProductionResponse(BaseModel):
     code_prod: str
     datprod: date
-    nbCarat: Optional[float] = None
+    nbCarat: Optional[float]
     entreprise_code: str
-
-class ProductionCreate(ProductionBase):
-    pass
-
-class ProductionResponse(ProductionBase):
+    mission_id: int
     substances: List[ProductionSubstanceResponse] = []
 
+    model_config = ConfigDict(from_attributes=True)
 
-# --- SUBSTANCE ---
-class SubstanceBase(BaseSchema):
-    num_contrat: str
+
+class ProductionUpdate(BaseModel):
+    datprod: Optional[date] = None
+    nbCarat: Optional[float] = None
+    entreprise_code: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class SubstanceUpdate(BaseModel):
+    libSub: Optional[str] = None
+    mont: Optional[float] = None
+    carat: Optional[float] = None
     date_cont: Optional[date] = None
-    annee_cont: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class SubstanceBase(BaseModel):
+    libSub: str
+    mont: Optional[float] = 0.0
+    carat: Optional[float] = 0.0
+    date_cont: Optional[date] = None
 
 class SubstanceCreate(SubstanceBase):
     pass
 
 class SubstanceResponse(SubstanceBase):
-    pass
+    code_sub: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ProductionSubstanceUpdate(BaseModel):
+    centre_ach: Optional[str] = None
+    nb_exp: Optional[int] = None
+    valbon: Optional[float] = None
+    val_decl: Optional[float] = None
+    mpc_decl: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- TITRE MINIER ---

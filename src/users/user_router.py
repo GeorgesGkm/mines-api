@@ -8,6 +8,7 @@ from src.core.database import get_db
 from src.auth.security import verify_password, get_password_hash, create_access_token
 from src.core.email import send_email
 from src.users import models
+from src.mission import models as model_agent
 from src.auth.dependencies import allow_admin
 from src.auth.dependencies import allow_all
 
@@ -63,13 +64,21 @@ def supprimer_role(role_id: int, db: Session = Depends(get_db)):
 @router.post("/users", response_model=schemas.UserResponse, dependencies=[Depends(allow_admin)])
 def creer_utilisateur(user: schemas.UserCreate, 
                       background_tasks: BackgroundTasks,
+                      matricule: Optional[str] = Query(None), 
                       db: Session = Depends(get_db)):
+    
+    agent = None
+    if matricule:
+        agent = db.query(model_agent.Agent).filter(model_agent.Agent.matricule == matricule).first()
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent introuvable.")
+        if agent.user_id is not None:
+            raise HTTPException(status_code=400, detail="Cet agent possède déjà un compte.")
     
     # Vérifier si l'email existe
     if db.query(models.User).filter(models.User.email == user.email).first():
         raise HTTPException(status_code=400, detail="Email déjà utilisé")
     
-
     hashed_pwd = get_password_hash(user.password)
     new_user = models.User(
         email=user.email,
@@ -84,6 +93,12 @@ def creer_utilisateur(user: schemas.UserCreate,
         new_user.roles = roles
 
     db.add(new_user)
+    db.flush()
+    # 4. LIAISON CONDITIONNELLE
+    if agent:
+        agent.user_id = new_user.id
+        db.add(agent)
+
     db.commit()
     db.refresh(new_user)
 

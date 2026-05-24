@@ -22,6 +22,9 @@ class User(Base):
     # Relation vers les rôles
     roles = relationship("Role", secondary=user_roles, back_populates="users")
 
+    #user vers personnel
+    agent = relationship("Agent", back_populates="user_rattache", uselist=False)
+
     
 class Role(Base):
     __tablename__ = "roles"
