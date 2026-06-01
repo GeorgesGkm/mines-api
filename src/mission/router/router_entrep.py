@@ -5,7 +5,7 @@ import os
 import math
 from datetime import date
 from src.core.database import get_db
-from ..mission import models, schemas
+from src.mission import models, schemas
 from src.users import models as models_user
 
 from src.auth.dependencies import (
@@ -130,48 +130,3 @@ def supprimer_entreprise(
     db.commit()
     return None
 
-
-# 2. INTRODUIRE UNE DEMANDE DE RENOUVELLEMENT DE TITRE (AVEC DOCUMENTS)
-
-@router.post("/{code}/demande-titre", response_model=schemas.TitreMinierResponse, status_code=status.HTTP_201_CREATED)
-async def introduire_demande_titre(
-    code: str,
-    numArret: str = Form(...),
-    type_id: int = Form(...),
-    date_octroi: Optional[date] = Form(None),
-    date_fin: Optional[date] = Form(None),
-    fichier_etude: UploadFile = File(...),         # Document d'étude de faisabilité
-    fichier_impact: UploadFile = File(...),        # Document d'étude d'impact environnemental
-    db: Session = Depends(get_db)
-):
-
-    entreprise = db.query(models.Entreprise).filter(models.Entreprise.code == code).first()
-    if not entreprise:
-        raise HTTPException(status_code=404, detail="Entreprise introuvable.")
-
-    # 2. Sauvegarde des fichiers physiques
-    path_etude = os.path.join(UPLOAD_TITRES_DIR, f"etude_{numArret}_{fichier_etude.filename}")
-    path_impact = os.path.join(UPLOAD_TITRES_DIR, f"impact_{numArret}_{fichier_impact.filename}")
-
-    with open(path_etude, "wb") as buffer:
-        buffer.write(await fichier_etude.read())
-
-    with open(path_impact, "wb") as buffer:
-        buffer.write(await fichier_impact.read())
-
-    # 3. Création de l'enregistrement de la demande de titre minier
-    db_titre = models.TitreMinier(
-        numArret=numArret,
-        doc_etude=path_etude,
-        doc_impactEnvir=path_impact,
-        date_octroi=date_octroi,
-        date_fin=date_fin,
-        etat="EN_ATTENTE",  # Etat initial avant l'analyse des Divisions et de la Direction
-        entreprise_code=code,
-        type_id=type_id
-    )
-
-    db.add(db_titre)
-    db.commit()
-    db.refresh(db_titre)
-    return db_titre

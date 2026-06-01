@@ -340,3 +340,63 @@ class TitreMinierCreate(TitreMinierBase):
 
 class TitreMinierResponse(TitreMinierBase):
     pass
+
+
+# --- SCHÉMAS ETAT TITRE ---
+class EtatTitreCreate(BaseModel):
+    libetattit: str  # Ex: "Renouvelé", "Déchu", "Refusé", "Valide"
+
+class EtatTitreResponse(BaseModel):
+    codetattit: int
+    libetattit: str
+    model_config = ConfigDict(from_attributes=True)
+
+# --- SCHÉMAS TYPE TITRE ---
+class TypeTitreCreate(BaseModel):
+    libtyptit: str  # Ex: "Permis d'Exploitation (PE)", "Permis de Recherche (PR)"
+
+class TypeTitreResponse(BaseModel):
+    codtyptit: int
+    libtyptit: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --- SCHÉMA POUR LA CRÉATION (POST) ---
+class TitreMinierCreate(BaseModel):
+    naretag: str  # N° Arrêté d'octroi ou de renouvellement (Clé primaire)
+    ndocetudfai: Optional[str] = None  # N° Référence Étude Faisabilité
+    ndocimpenv: Optional[str] = None   # N° Référence Étude Impact Env.
+    datoctroitit: Optional[date] = None
+    datfinval: Optional[date] = None
+    demande_num: Optional[str] = None  # N° Demande associée (si issu du workflow)
+    codetattit: int  # ID de l'état (ex: 1 pour Renouvelé, 2 pour Déchu)
+    codtyptit: int   # ID du type (ex: 1 pour PE, 2 pour PR)
+
+# --- SCHÉMA POUR LA MISE À JOUR (PATCH) ---
+class TitreMinierUpdate(BaseModel):
+    ndocetudfai: Optional[str] = None
+    ndocimpenv: Optional[str] = None
+    datoctroitit: Optional[date] = None
+    datfinval: Optional[date] = None
+    codetattit: Optional[int] = None
+    codtyptit: Optional[int] = None
+
+# --- SCHÉMA DE RÉPONSE SIMPLE 
+class TitreMinierResponse(TitreMinierCreate):
+    model_config = ConfigDict(from_attributes=True)
+
+# --- SCHÉMA DE RÉPONSE DÉTAILLÉE
+class TitreMinierDetailResponse(BaseModel):
+    naretag: str
+    ndocetudfai: Optional[str]
+    ndocimpenv: Optional[str]
+    datoctroitit: Optional[date]
+    datfinval: Optional[date]
+    demande_num: Optional[str]
+    codetattit: int
+    codtyptit: int
+    lib_etat: str          # Jointure: "Renouvelé", "Déchu", "Refusé"
+    lib_type: str          # Jointure: "Permis d'Exploitation (PE)", etc.
+    code_entreprise: Optional[str] = None
+    nom_entreprise: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)

@@ -10,11 +10,12 @@ from src.core.init_db import init_db
 from src.auth.router import router as auth_router
 from src.users.user_router import router as user_router
 from fastapi.middleware.cors import CORSMiddleware
-from src.mission import router_agent
-from src.mission import router_mission
-from src.mission import router_entrep
-from src.mission import router_proces_verbal
-from src.mission import router_production
+from src.mission.router import router_agent
+from src.mission.router import router_mission
+from src.mission.router import router_entrep
+from src.mission.router import router_proces_verbal
+from src.mission.router import router_production
+from src.mission.router import router_titre
 
 from fastapi.staticfiles import StaticFiles
 
@@ -66,4 +67,4 @@ app.include_router(router_mission.router)
 app.include_router(router_entrep.router)
 app.include_router(router_proces_verbal.router)
 app.include_router(router_production.router)
-
+app.include_router(router_titre.router)

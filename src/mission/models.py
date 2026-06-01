@@ -1,4 +1,6 @@
-from sqlalchemy import Column, String, Integer, Float, Date, ForeignKey, Table
+import enum
+from datetime import datetime, date
+from sqlalchemy import Column, String, Integer, Float, Date, DateTime, ForeignKey, Table, Enum
 from sqlalchemy.orm import relationship
 from src.core.database import Base
 
@@ -115,7 +117,7 @@ class Entreprise(Base):
     # Relations
     missions = relationship("Mission", back_populates="entreprise")
     productions = relationship("Production", back_populates="entreprise")
-    titres_miniers = relationship("TitreMinier", back_populates="entreprise")
+    demandes = relationship("Demande", back_populates="entreprise")
 
 
 class ProductionSubstance(Base):
@@ -169,30 +171,100 @@ class Substance(Base):
     productions = relationship("ProductionSubstance", back_populates="substance")
 
 
-class TypeTitre(Base):
-    __tablename__ = "type_titre"
+class StatutInstruction(str, enum.Enum):
+    DEPOT = "DEPOT_DIRECTION_MINES"
+    ANALYSE_PROVINCIALE = "EN_COURS_DIVISION_PROVINCIALE"
+    ANALYSE_MINISTRE_PROV = "EN_COURS_MINISTRE_PROVINCIAL"
+    PROJET_ARRETE = "PROJET_ARRETE_DIRECTION_MINES"
+    SIGNATURE_MINISTRE = "EN_ATTENTE_SIGNATURE_MINISTRE"
+    VALIDE = "VALIDE_ET_TRANSMIS_CAMI"
+    REJETE = "REJETE"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    name_type = Column(String(100), nullable=False)
+class TypeAvis(str, enum.Enum):
+    EN_ATTENTE = "EN_ATTENTE"
+    FAVORABLE = "FAVORABLE"
+    DEFAVORABLE = "DEFAVORABLE"
+
+
+class Demande(Base):
+    __tablename__ = "demande"
+
+    numdem = Column(String(50), primary_key=True, index=True)
+    datdem = Column(Date, nullable=False, default=date.today)
+    
+    # ─── AJOUTS CRITIQUES POUR LE PROCESSUS DE TERRAIN ───
+    statut = Column(Enum(StatutInstruction), default=StatutInstruction.DEPOT, nullable=False)
+    
+    # Suivi des avis de chaque niveau étatique
+    avis_division_provinciale = Column(Enum(TypeAvis), default=TypeAvis.EN_ATTENTE, nullable=False)
+    date_avis_div_prov = Column(DateTime, nullable=True)
+    
+    avis_ministre_provincial = Column(Enum(TypeAvis), default=TypeAvis.EN_ATTENTE, nullable=False)
+    date_avis_min_prov = Column(DateTime, nullable=True)
+    
+    avis_direction_mines = Column(Enum(TypeAvis), default=TypeAvis.EN_ATTENTE, nullable=False)
+    date_avis_dir_mines = Column(DateTime, nullable=True)
+    
+    # Clé étrangère (Relation EFFECTUER 1,1)
+    entreprise_code = Column(String(50), ForeignKey('entreprise.code'), nullable=False)
 
     # Relations
-    titres = relationship("TitreMinier", back_populates="type_relation")
+    entreprise = relationship("Entreprise", back_populates="demandes")
+    titre_minier = relationship("TitreMinier", back_populates="demande", uselist=False)
+    documents_scannes = relationship("DocumentScanne", back_populates="demande", cascade="all, delete-orphan")
 
 
 class TitreMinier(Base):
     __tablename__ = "titre_minier"
 
-    numArret = Column(String(50), primary_key=True, index=True)
-    doc_etude = Column(String(255))
-    doc_impactEnvir = Column(String(255))
-    date_octroi = Column(Date)
-    date_fin = Column(Date)
-    etat = Column(String(50))
+    naretag = Column(String(100), primary_key=True, index=True) # N° Arrêté d'octroi ou renouvellement
+    ndocetudfai = Column(String(100))  # N° Référence Étude Faisabilité
+    ndocimpenv = Column(String(100))   # N° Référence Étude Impact Env.
+    datoctroitit = Column(Date, nullable=True)
+    datfinval = Column(Date, nullable=True)
 
-    # Clés étrangères
-    entreprise_code = Column(String(50), ForeignKey('entreprise.code'))
-    type_id = Column(Integer, ForeignKey('type_titre.id'))
+    # Clé étrangère (Relation ABOUTIR 1,1)
+    demande_num = Column(String(50), ForeignKey('demande.numdem'), nullable=True)
+    
+    # Clé étrangère (Relation SE TROUVER 1,1)
+    codetattit = Column(Integer, ForeignKey('etat_titre.codetattit'), nullable=False)
+    
+    # Clé étrangère (Relation ETRE2 1,1)
+    codtyptit = Column(Integer, ForeignKey('type_titre.codtyptit'), nullable=False)
 
     # Relations
-    entreprise = relationship("Entreprise", back_populates="titres_miniers")
-    type_relation = relationship("TypeTitre", back_populates="titres")
+    demande = relationship("Demande", back_populates="titre_minier")
+    etat = relationship("EtatTitre", back_populates="titres")
+    type_titre = relationship("TypeTitre", back_populates="titres")
+
+
+class EtatTitre(Base):
+    __tablename__ = "etat_titre"
+
+    codetattit = Column(Integer, primary_key=True, autoincrement=True)
+    libetattit = Column(String(50), nullable=False) # "Renouvelé", "Déchu", "Refusé", "En cours"
+
+    titres = relationship("TitreMinier", back_populates="etat")
+
+
+class TypeTitre(Base):
+    __tablename__ = "type_titre"
+
+    codtyptit = Column(Integer, primary_key=True, autoincrement=True)
+    libtyptit = Column(String(100), nullable=False) # "Permis d'Exploitation (PE)", "Permis de Recherche (PR)"
+
+    titres = relationship("TitreMinier", back_populates="type_titre")
+
+
+class DocumentScanne(Base):
+    __tablename__ = "document_scanne"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    demande_num = Column(String(50), ForeignKey('demande.numdem'), nullable=False)
+    
+    type_fichier = Column(String(50), nullable=False) # "AGREMENT", "ETUDE_FAISABILITE", "ETUDE_IMPACT"
+    nom_fichier = Column(String(150), nullable=False) # "etude_impact_pe1245.pdf"
+    chemin_stockage = Column(String(255), nullable=False) # "/uploads/documents/2026/..."
+    date_upload = Column(DateTime, default=datetime.utcnow)
+
+    demande = relationship("Demande", back_populates="documents_scannes")

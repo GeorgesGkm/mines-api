@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import math
 from src.core.database import get_db
-from ..mission import models, schemas
+from src.mission import models, schemas
 
 from src.users import models as models_user
 from src.auth.dependencies import (
