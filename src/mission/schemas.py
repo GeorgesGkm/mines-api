@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
-from datetime import date
+from datetime import date, datetime
 from typing import List, Optional
+from .models import TypeAvis, StatutInstruction
 
 # --- CONFIGURATION COMMUNE ---
 class BaseSchema(BaseModel):
@@ -400,3 +401,56 @@ class TitreMinierDetailResponse(BaseModel):
     code_entreprise: Optional[str] = None
     nom_entreprise: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
+
+
+class TitreEnPerilResponse(BaseModel):
+    naretag: str
+    nom_entreprise: str
+    lib_type: str
+    datfinval: date
+    jours_restants: int
+    statut_actuel: str
+
+
+# 2. Le sous-schéma des documents doit être AU-DESSUS de DemandeResponse
+class DocumentScanneResponse(BaseModel):
+    id: int
+    type_fichier: str
+    nom_fichier: str
+    chemin_stockage: str
+    date_upload: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+# 3. La classe demandée par l'erreur
+class DemandeResponse(BaseModel):
+    numdem: str
+    datdem: date
+    statut: StatutInstruction
+    avis_division_provinciale: TypeAvis
+    date_avis_div_prov: Optional[datetime]
+    avis_ministre_provincial: TypeAvis
+    date_avis_min_prov: Optional[datetime]
+    avis_direction_mines: TypeAvis
+    date_avis_dir_mines: Optional[datetime]
+    entreprise_code: str
+    documents_scannes: List[DocumentScanneResponse] = [] # Liste vide par défaut
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DemandePaginatedResponse(BaseModel):
+    total_items: int       
+    total_pages: int
+    current_page: int
+    page_size: int
+    results: List[DemandeResponse]
+
+class DemandeUpdate(BaseModel):
+    entreprise_code: Optional[str] = None
+    statut: Optional[StatutInstruction] = None
+    avis_division_provinciale: Optional[TypeAvis] = None
+    date_avis_div_prov: Optional[datetime] = None
+    avis_ministre_provincial: Optional[TypeAvis] = None
+    date_avis_min_prov: Optional[datetime] = None
+    avis_direction_mines: Optional[TypeAvis] = None
+    date_avis_dir_mines: Optional[datetime] = None

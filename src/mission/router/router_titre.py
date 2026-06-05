@@ -1,8 +1,11 @@
+from datetime import date, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from src.core.database import get_db
 from src.mission import models, schemas
+from src.mission.models import StatutInstruction
 from src.auth.dependencies import allow_admin, allow_directeur, allow_all
 
 router = APIRouter(
@@ -32,7 +35,7 @@ def creer_etat_titre(
 
 @router.get("/etats", response_model=List[schemas.EtatTitreResponse])
 def lister_etats_titre(db: Session = Depends(get_db), current_user = Depends(allow_admin)):
-    """Tout le monde (y compris l'application Flutter) peut lire la liste des états."""
+    """Tout le monde peut lire la liste des états."""
     return db.query(models.EtatTitre).all()
 
 
@@ -149,6 +152,30 @@ def creer_titre_minier(
     ttype = db.query(models.TypeTitre).filter(models.TypeTitre.codtyptit == payload.codtyptit).first()
     if not etat or not ttype:
         raise HTTPException(status_code=400, detail="L'état ou le type de titre spécifié n'existe pas.")
+    
+    if not payload.demande_num:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Un numéro de demande valide est obligatoire pour générer un titre minier."
+        )
+    demande = db.query(models.Demande).filter(models.Demande.numdem == payload.demande_num).first()
+    
+    if not demande:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"La demande numéro {payload.demande_num} est introuvable."
+        )
+    
+    # Étape B : Est-ce que la demande a bien été validée par toutes les instances ?
+    if demande.statut != StatutInstruction.VALIDE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Impossible de créer le titre. La demande {payload.demande_num} "
+                f"est actuellement au statut '{demande.statut.value}'. "
+                "Elle doit être validée et transmise (VALIDE_ET_TRANSMIS_CAMI) au préalable."
+            )
+        )
 
     nouveau_titre = models.TitreMinier(**payload.model_dump())
     db.add(nouveau_titre)
@@ -169,7 +196,7 @@ def lister_et_rechercher_titres(
     current_user = Depends(allow_all)
 ):
     """
-    Endpoint de recherche global pour alimenter les tableaux de bord et filtres de recherche Flutter.
+    Endpoint de recherche global pour alimenter les tableaux de bord et filtres de recherche.
     """
     
     query = db.query(
@@ -197,48 +224,15 @@ def lister_et_rechercher_titres(
     if recherche:
         query = query.filter(
             (models.TitreMinier.naretag.ilike(f"%{recherche}%")) | 
-            (models.Entreprise.codent.ilike(f"%{recherche}%")) |
-            (models.Entreprise.noment.ilike(f"%{recherche}%"))
+            (models.Entreprise.code.ilike(f"%{recherche}%")) |
+            (models.Entreprise.nomenclature.ilike(f"%{recherche}%"))
         )
 
     return query.all()
 
 
-# =====================================================================
-# 3. CONSULTATION PAR ID / N° ARRÊTÉ (GET BY ID)
-# =====================================================================
-@router.get("/{naretag}", response_model=schemas.TitreMinierDetailResponse)
-def obtenir_titre_par_arrete(naretag: str, db: Session = Depends(get_db), current_user = Depends(allow_all)):
-    """
-    Récupère la fiche complète d'un titre minier via son numéro d'arrêté unique.
-    """
-    titre = db.query(
-        models.TitreMinier.naretag,
-        models.TitreMinier.ndocetudfai,
-        models.TitreMinier.ndocimpenv,
-        models.TitreMinier.datoctroitit,
-        models.TitreMinier.datfinval,
-        models.TitreMinier.demande_num,
-        models.TitreMinier.codetattit,
-        models.TitreMinier.codtyptit,
-        models.EtatTitre.libetattit.label("lib_etat"),
-        models.TypeTitre.libtyptit.label("lib_type"),
-        models.Entreprise.code.label("code_entreprise"),
-        models.Entreprise.nomenclature.label("nom_entreprise")
-    ).join(models.EtatTitre, models.TitreMinier.codetattit == models.EtatTitre.codetattit)\
-     .join(models.TypeTitre, models.TitreMinier.codtyptit == models.TypeTitre.codtyptit)\
-     .outerjoin(models.Demande, models.TitreMinier.demande_num == models.Demande.numdem)\
-     .outerjoin(models.Entreprise, models.Demande.entreprise_code == models.Entreprise.code)\
-     .filter(models.TitreMinier.naretag == naretag).first()
 
-    if not titre:
-        raise HTTPException(status_code=404, detail="Titre minier introuvable.")
-    return titre
-
-
-# =====================================================================
 # 4. MODIFICATION PARTIELLE / TECHNIQUE (PATCH)
-# =====================================================================
 @router.patch("/{naretag}", response_model=schemas.TitreMinierResponse)
 def modifier_titre_minier(
     naretag: str, 
@@ -274,7 +268,7 @@ def forcer_changement_etat_titre(
     current_user = Depends(allow_admin) # 🛡️ Uniquement l'administrateur système (IT)
 ):
     """
-    Endpoint de coercition : Permet de déclarer un titre manuellement comme 'Déchu', 'Suspendu' ou 'Refusé'
+    Permet de déclarer un titre manuellement comme 'Déchu', 'Suspendu' ou 'Refusé'
     à la suite d'une décision administrative ou juridique, en dehors du workflow classique.
     """
     db_titre = db.query(models.TitreMinier).filter(models.TitreMinier.naretag == naretag).first()
@@ -305,3 +299,83 @@ def supprimer_titre_minier(naretag: str, db: Session = Depends(get_db), current_
     db.delete(db_titre)
     db.commit()
     return None
+
+@router.get("/titres-proches-expiration", response_model=List[schemas.TitreEnPerilResponse])
+def obtenir_titres_proches_expiration(
+    jours: int = Query(30, description="Seuil d'expiration en jours"),
+    db: Session = Depends(get_db),
+    current_user = Depends(allow_admin) # 🛡️ Uniquement pour l'admin
+):
+    """
+    Exclusif Admin : Liste tous les titres qui vont expirer dans le délai imparti 
+     et qui ne sont pas encore déchus ou suspendus.
+    """
+    aujourdhui = date.today()
+    date_limite = aujourdhui + timedelta(days=jours)
+
+    # Récupération des titres actifs dont la date de fin de validité approche
+    titres_en_danger = db.query(
+        models.TitreMinier,
+        models.EtatTitre.libetattit.label("lib_etat"),
+        models.TypeTitre.libtyptit.label("lib_type"),
+        models.Entreprise.nomenclature.label("nom_entreprise")
+    ).join(models.EtatTitre, models.TitreMinier.codetattit == models.EtatTitre.codetattit)\
+     .join(models.TypeTitre, models.TitreMinier.codtyptit == models.TypeTitre.codtyptit)\
+     .outerjoin(models.Demande, models.TitreMinier.demande_num == models.Demande.numdem)\
+     .outerjoin(models.Entreprise, models.Demande.entreprise_code == models.Entreprise.code)\
+     .filter(models.TitreMinier.datfinval >= aujourdhui)\
+     .filter(models.TitreMinier.datfinval <= date_limite)\
+     .filter(models.EtatTitre.libetattit.notin_(["Déchu", "Refusé", "Expiré"]))\
+     .all()
+
+    reponse = []
+    for t in titres_en_danger:
+        jours_restants = (t.TitreMinier.datfinval - aujourdhui).days
+        reponse.append({
+            "naretag": t.TitreMinier.naretag,
+            "nom_entreprise": t.nom_entreprise or "Inconnue",
+            "lib_type": t.lib_type,
+            "datfinval": t.TitreMinier.datfinval,
+            "jours_restants": jours_restants,
+            "statut_actuel": t.lib_etat
+        })
+
+    # Trier du plus urgent au moins urgent
+    reponse.sort(key=lambda x: x["jours_restants"])
+    return reponse
+
+def executer_decheance_automatique(db: Session):
+    """
+    Parcourt la base de données, trouve les titres dont la date de validité 
+    est dépassée et modifie leur état vers 'Déchu'.
+    """
+    aujourdhui = date.today()
+    
+    # 1. Récupérer l'ID de l'état "Déchu" dans le référentiel
+    etat_dechu = db.query(models.EtatTitre).filter(models.EtatTitre.libetattit.ilike("Déchu")).first()
+    if not etat_dechu:
+        return {"erreur": "Le référentiel 'Déchu' n'existe pas."}
+
+    # 2. Trouver les titres expirés qui sont encore marqués comme valides ou renouvelés
+    titres_expires = db.query(models.TitreMinier)\
+                       .join(models.EtatTitre)\
+                       .filter(models.TitreMinier.datfinval < aujourdhui)\
+                       .filter(models.EtatTitre.libetattit.notin_(["Déchu", "Refusé"]))\
+                       .all()
+
+    compteur = 0
+    for titre in titres_expires:
+        titre.codetattit = etat_dechu.codetattit
+        compteur += 1
+
+    if compteur > 0:
+        db.commit()
+        
+    return {"message": f"Traitement exécuté. {compteur} titres ont été automatiquement déclarés Déchus."}
+
+
+# Endpoint déclencheur manuel pour l'administrateur
+@router.post("/run-auto-decheance")
+def declencher_decheance_manuelle(db: Session = Depends(get_db), current_user = Depends(allow_admin)):
+    """Déclenche immédiatement la vérification et la déchéance des titres expirés."""
+    return executer_decheance_automatique(db)

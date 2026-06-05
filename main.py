@@ -16,7 +16,7 @@ from src.mission.router import router_entrep
 from src.mission.router import router_proces_verbal
 from src.mission.router import router_production
 from src.mission.router import router_titre
-
+from src.mission.router import router_demande
 from fastapi.staticfiles import StaticFiles
 
 
@@ -53,6 +53,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 UPLOAD_TITRES_DIR = "static/documents_titres"
 os.makedirs(UPLOAD_TITRES_DIR, exist_ok=True)
 
+
+
 @app.get("/")
 def root():
     return {"message": "Backend OK"}
@@ -68,3 +70,4 @@ app.include_router(router_entrep.router)
 app.include_router(router_proces_verbal.router)
 app.include_router(router_production.router)
 app.include_router(router_titre.router)
+app.include_router(router_demande.router)
