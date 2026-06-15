@@ -45,6 +45,17 @@ def creer_type_pv(
     return nouveau_type
 
 
+@router.get("/types", response_model=List[schemas.TypePVResponse])
+def lister_types_pv(
+    db: Session = Depends(get_db),
+    current_user: models_user.User = Depends(allow_directeur)
+):
+    """
+    Récupérer la liste complète des catégories de PV.
+    """
+    return db.query(models.TypePV).order_by(models.TypePV.type_nom.asc()).all()
+
+
 @router.patch("/types/{code_type}", response_model=schemas.TypePVResponse)
 def modifier_type_pv(
     code_type: int, 
