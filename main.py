@@ -18,6 +18,8 @@ from src.mission.router import router_production
 from src.mission.router import router_titre
 from src.mission.router import router_demande
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+
 
 
 @asynccontextmanager
@@ -36,7 +38,8 @@ app = FastAPI(title="Mines API", lifespan=lifespan)
 origins = [
     "http://localhost:8080",
     "http://127.0.0.1:8080",
-    "https://sina-gouv.netlify.src"
+    "http://192.168.6.1:8080"
+
 ]
 
 app.add_middleware(

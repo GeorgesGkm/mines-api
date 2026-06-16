@@ -2,6 +2,8 @@ fastapi[standard]
 uvicorn[standard]
 sqlalchemy
 psycopg2-binary
+cors==1.0.1
+
 
 python-jose[cryptography]
 bcrypt==4.0.1

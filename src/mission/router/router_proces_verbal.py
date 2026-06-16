@@ -96,7 +96,7 @@ def supprimer_type_pv(
     if not db_type:
         raise HTTPException(status_code=404, detail="Type de PV introuvable.")
     
-    pv_lie = db.query(models.ProcesVerbal).filter(models.ProcesVerbal.type_code_id == code_type).first()
+    pv_lie = db.query(models.ProcesVerbal).filter(models.ProcesVerbal.type_code == code_type).first()
     if pv_lie:
         raise HTTPException(
             status_code=400, 
