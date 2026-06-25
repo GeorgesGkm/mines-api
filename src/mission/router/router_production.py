@@ -163,7 +163,7 @@ def obtenir_productions_par_mission(
     return reponse_formatee
 
 
-@router.patch("/{code_prod}", response_model=schemas.ProductionResponse)
+@router.patch("/{code_prod}")
 def modifier_production(
     code_prod: str, 
     payload: schemas.ProductionUpdate, 
@@ -189,7 +189,7 @@ def modifier_production(
     return db_prod
 
 
-@router.patch("/substance/{code_sub}", response_model=schemas.SubstanceResponse)
+@router.patch("/substance/{code_sub}")
 def modifier_substance_referentiel(
     code_sub: int, 
     payload: schemas.SubstanceUpdate, 
