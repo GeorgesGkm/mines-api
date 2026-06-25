@@ -17,6 +17,7 @@ from src.mission.router import router_proces_verbal
 from src.mission.router import router_production
 from src.mission.router import router_titre
 from src.mission.router import router_demande
+from src.mission.router import statistiques
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -57,7 +58,6 @@ UPLOAD_TITRES_DIR = "static/documents_titres"
 os.makedirs(UPLOAD_TITRES_DIR, exist_ok=True)
 
 
-
 @app.get("/")
 def root():
     return {"message": "Backend OK"}
@@ -74,3 +74,4 @@ app.include_router(router_proces_verbal.router)
 app.include_router(router_production.router)
 app.include_router(router_titre.router)
 app.include_router(router_demande.router)
+app.include_router(statistiques.router)
