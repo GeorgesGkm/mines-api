@@ -23,10 +23,10 @@ router = APIRouter(
 def enregistrer_production_et_substances(
     payload: schemas.ProductionCreate, 
     db: Session = Depends(get_db),
-    current_user: models_user.User = Depends(allow_agent)
+    current_user = Depends(allow_agent)
 ):
     """
-    Enregistre une production et des substances 
+    Enregistre une production et ses substances associées, puis retourne le format complet.
     """
     # 1. Contrôle de la Mission
     mission = db.query(models.Mission).filter(models.Mission.n_ordre == payload.mission_id).first()
@@ -60,7 +60,7 @@ def enregistrer_production_et_substances(
     if payload.substances_declarees:
         for sub_data in payload.substances_declarees:
             
-            # Recherche par libellé (Insensible à la casse pour éviter les doublons comme 'Or' et 'or')
+            # Recherche par libellé (Insensible à la casse)
             substance_existe = db.query(models.Substance).filter(
                 models.Substance.libSub.ilike(sub_data.libSub)
             ).first()
@@ -74,12 +74,12 @@ def enregistrer_production_et_substances(
                     date_cont=sub_data.date_cont if sub_data.date_cont else date.today()
                 )
                 db.add(substance_existe)
-                db.flush() # Crucial : génère immédiatement le 'code_sub' auto-incrémenté en mémoire
+                db.flush() 
 
-            # 6. Insertion dans la table d'association production_substance avec le nouveau substance_code
+            # 6. Insertion dans la table d'association production_substance
             association = models.ProductionSubstance(
                 production_code=nouvelle_production.code_prod,
-                substance_code=substance_existe.code_sub, # ID entier lié ici !
+                substance_code=substance_existe.code_sub, 
                 centre_ach=sub_data.centre_ach,
                 nb_exp=sub_data.nb_exp,
                 valbon=sub_data.valbon,
@@ -92,28 +92,75 @@ def enregistrer_production_et_substances(
     db.commit()
     db.refresh(nouvelle_production)
     
-    return nouvelle_production
+    # 7. Formatage de la réponse pour s'aligner sur ProductionResponse
+    substances_aggregations = []
+    for prod_sub in nouvelle_production.substances:
+        substances_aggregations.append({
+            "substance_code": prod_sub.substance_code,
+            "libSub": prod_sub.substance.libSub if prod_sub.substance else "",
+            "mont": prod_sub.substance.mont if prod_sub.substance else 0.0,
+            "carat": prod_sub.substance.carat if prod_sub.substance else 0.0,
+            "date_cont": prod_sub.substance.date_cont if prod_sub.substance else None,
+            "centre_ach": prod_sub.centre_ach,
+            "nb_exp": prod_sub.nb_exp,
+            "valbon": prod_sub.valbon,
+            "val_decl": prod_sub.val_decl,
+            "mpc_decl": prod_sub.mpc_decl
+        })
+
+    return {
+        "code_prod": nouvelle_production.code_prod,
+        "datprod": nouvelle_production.datprod,
+        "nbCarat": nouvelle_production.nbCarat,
+        "entreprise_code": nouvelle_production.entreprise_code,
+        "mission_id": nouvelle_production.mission_id,
+        "substances_declarees": substances_aggregations
+    }
 
 
 @router.get("/mission/{mission_id}", response_model=List[schemas.ProductionResponse])
 def obtenir_productions_par_mission(
     mission_id: int, 
-    db: Session = Depends(get_db),
-    current_user: models_user.User = Depends(allow_all)
+    db: Session = Depends(get_db)
 ):
-    """
-    Récupérer l'intégralité des données de production et des substances collectées
-    par un agent au cours d'une mission spécifique.
-    """
-    # 1. Vérifier si la mission existe
+    # 1. Vérifier la mission
     mission = db.query(models.Mission).filter(models.Mission.n_ordre == mission_id).first()
     if not mission:
         raise HTTPException(status_code=404, detail="Mission introuvable.")
 
-    # 2. Récupérer toutes les productions liées à cette mission
+    # 2. Récupérer les productions
     productions = db.query(models.Production).filter(models.Production.mission_id == mission_id).all()
     
-    return productions
+    reponse_formatee = []
+    
+    for prod in productions:
+        substances_aggregations = []
+        
+        for prod_sub in prod.substances:
+            substances_aggregations.append({
+                "substance_code": prod_sub.substance_code,
+                "libSub": prod_sub.substance.libSub if prod_sub.substance else "",
+                "mont": prod_sub.substance.mont if prod_sub.substance else 0.0,
+                "carat": prod_sub.substance.carat if prod_sub.substance else 0.0,
+                "date_cont": prod_sub.substance.date_cont if prod_sub.substance else None,
+                "centre_ach": prod_sub.centre_ach,
+                "nb_exp": prod_sub.nb_exp,
+                "valbon": prod_sub.valbon,
+                "val_decl": prod_sub.val_decl,
+                "mpc_decl": prod_sub.mpc_decl
+            })
+            
+        # ─── ALIGNEMENT CLÉ-SCHÉMA ───
+        reponse_formatee.append({
+            "code_prod": prod.code_prod,
+            "datprod": prod.datprod,
+            "nbCarat": prod.nbCarat,
+            "entreprise_code": prod.entreprise_code,
+            "mission_id": prod.mission_id,
+            "substances_declarees": substances_aggregations  # ◄── Utilisez exactement ce nom de clé
+        })
+        
+    return reponse_formatee
 
 
 @router.patch("/{code_prod}", response_model=schemas.ProductionResponse)

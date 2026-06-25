@@ -267,6 +267,10 @@ class ProductionCreate(BaseModel):
 
 class ProductionSubstanceResponse(BaseModel):
     substance_code: int
+    libSub: str
+    mont: float
+    carat: float
+    date_cont: date
     centre_ach: Optional[str]
     nb_exp: Optional[int]
     valbon: Optional[float]
@@ -278,10 +282,10 @@ class ProductionSubstanceResponse(BaseModel):
 class ProductionResponse(BaseModel):
     code_prod: str
     datprod: date
-    nbCarat: Optional[float]
+    nbCarat: float
     entreprise_code: str
     mission_id: int
-    substances: List[ProductionSubstanceResponse] = []
+    substances_declarees: List[ProductionSubstanceResponse]
 
     model_config = ConfigDict(from_attributes=True)
 
