@@ -233,8 +233,8 @@ def valider_avis_division_provinciale(
     current_user = Depends(allow_all)
 ):
     db_demande = db.query(models.Demande).filter(models.Demande.numdem == numdem).first()
-    if not db_demande or db_demande.statut != models.StatutInstruction.ANALYSE_PROVINCIALE:
-        raise HTTPException(status_code=400, detail="Cette demande n'est pas au niveau de la Division Provinciale.")
+    """if not db_demande or db_demande.statut != models.StatutInstruction.ANALYSE_PROVINCIALE:
+        raise HTTPException(status_code=400, detail="Cette demande n'est pas au niveau de la Division Provinciale.")"""
 
     db_demande.avis_division_provinciale = avis
     db_demande.date_avis_div_prov = datetime.utcnow()
