@@ -121,7 +121,8 @@ def enregistrer_production_et_substances(
 @router.get("/mission/{mission_id}", response_model=List[schemas.ProductionResponse])
 def obtenir_productions_par_mission(
     mission_id: int, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(allow_agent)
 ):
     # 1. Vérifier la mission
     mission = db.query(models.Mission).filter(models.Mission.n_ordre == mission_id).first()
