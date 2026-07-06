@@ -210,7 +210,7 @@ class EntrepriseBase(BaseSchema):
     phone: Optional[str] = None
     n_comptebancaire: Optional[str] = None
     
- class EntrepriseResponse(EntrepriseBase):
+class EntrepriseResponse(EntrepriseBase):
     pass
    
 
