@@ -39,7 +39,11 @@ app = FastAPI(title="Mines API", lifespan=lifespan)
 origins = [
     "http://localhost:8080",
     "http://127.0.0.1:8080",
-    "http://192.168.6.1:8080"
+    "http://192.168.6.1:8080",
+    "https://mine-rdc.netlify.app/",
+    "https://mine-rdc.netlify.app",
+    
+    
 
 ]
 
