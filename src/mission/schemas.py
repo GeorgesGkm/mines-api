@@ -209,6 +209,10 @@ class EntrepriseBase(BaseSchema):
     province: Optional[str] = None
     phone: Optional[str] = None
     n_comptebancaire: Optional[str] = None
+    
+ class EntrepriseResponse(EntrepriseBase):
+    pass
+   
 
 class EntreprisePaginationResponse(BaseModel):
     total_items: int
@@ -235,8 +239,6 @@ class EntrepriseCreate(EntrepriseBase):
     pass
 
 
-class EntrepriseResponse(EntrepriseBase):
-    pass
 
 
 # --- DÉTAILS DE LA SUBSTANCE DANS LE PAYLOAD ---
