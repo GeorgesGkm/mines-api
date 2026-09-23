@@ -37,7 +37,8 @@ async def lifespan(src: FastAPI):
 app = FastAPI(title="Mines API", lifespan=lifespan)
 
 origins = [
-    "https://e-mines-gouv.vercel.app/"
+    "https://e-mines-gouv.vercel.app/",
+    "https://e-mines-gouv.vercel.app"
     
 ]
 
