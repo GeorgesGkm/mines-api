@@ -37,11 +37,8 @@ async def lifespan(src: FastAPI):
 app = FastAPI(title="Mines API", lifespan=lifespan)
 
 origins = [
-    "https://mine-rdc.netlify.app/",
-    "https://mine-rdc.netlify.app",
+    "https://e-mines-gouv.vercel.app/"
     
-    
-
 ]
 
 app.add_middleware(
