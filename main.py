@@ -40,6 +40,7 @@ origins = [
     "https://e-mines-gouv.vercel.app/",
     "https://e-mines-gouv.vercel.app"
     
+    
 ]
 
 app.add_middleware(
